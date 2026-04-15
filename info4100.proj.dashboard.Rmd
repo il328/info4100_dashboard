@@ -65,16 +65,16 @@ library(tidyverse)
 # Below you are loading 2 new packages:shiny + shinydashboard.
 # Install them once, then comment out the install command.
 
-# install.packages("shiny")
+#install.packages("shiny")
 library(shiny)
 
-# install.packages("shinydashboard")
+#install.packages("shinydashboard")
 library(shinydashboard)
 
 # This should load the datasets: 
 # experience (123 by 11) and quiz (2423 by 13)
 load("info4100.proj.dashboard.rda")
-```
+ls()```
 
 # Part 1: Planning / Sketching
 
@@ -122,6 +122,8 @@ This is where you generate the dashboard layout. You are given a very basic wire
 
 Your team can split up the tasks. Some work on creating the UI (this part), while others work on pre-processing the data and creating the statistics and visualizations that will populate the UI (next part).
 
+
+
 **Question 3:** Create the layout for the dashboard tabs. You can have as many "tabs" as you like. Each tab is the content displayed when the user clicks on one of the menu items (so it is the page content). Here you are just specifying the wire frame i.e. **what goes where on the pages**, not what goes into it.
 
 ```{r}
@@ -133,20 +135,43 @@ instructor_dash = tabItem(
     tabName = "instructor",
     h2("Instructor Dashboard"),
     
-    # Dynamic infoBoxes
+    # row 1: Summary Statistics (The 4 small cards at the top)
     fluidRow(
-      infoBoxOutput("inst.info1"),
-      infoBoxOutput("inst.info2")
+      infoBoxOutput("inst.total_students", width = 3),
+      infoBoxOutput("inst.avg_attendance", width = 3),
+      infoBoxOutput("inst.avg_quiz", width = 3),
+      infoBoxOutput("inst.avg_sentiment", width = 3)
     ),
-    # Any visualization
+    
+    # row 2: Main Trends (The middle two larger boxes)
     fluidRow(
         box(
-            title = "Box 1",
-            plotOutput("inst.plot1", height = 250)
+            title = "Quiz score trend",
+            footer = "Class average ± IQR across 10 quizzes",
+            plotOutput("inst.plot_trend", height = 250),
+            width = 6
         ),
         box(
-            title = "Box 2",
-            plotOutput("inst.plot2", height = 250)
+            title = "Attendance rate by quiz",
+            footer = "Dashed line = 80% threshold",
+            plotOutput("inst.plot_attendance", height = 250),
+            width = 6
+        )
+    ),
+    
+    # row 3: Comparisons (The bottom two larger boxes)
+    fluidRow(
+        box(
+            title = "Score distribution by program",
+            footer = "GRAD vs UGRAD quiz score histograms",
+            plotOutput("inst.plot_dist", height = 250),
+            width = 6
+        ),
+        box(
+            title = "Prior skill vs quiz performance",
+            footer = "Scatter + linear fit by program",
+            plotOutput("inst.plot_scatter", height = 250),
+            width = 6
         )
     )
 )
@@ -155,6 +180,45 @@ instructor_dash = tabItem(
 student_dash = tabItem(
   tabName = "student",
   h2("Student Dashboard")
+  # Row 1: Individual Summary Statistics with Comparison Subtext
+  fluidRow(
+    infoBoxOutput("stud.attendance", width = 3),
+    infoBoxOutput("stud.avg_quiz", width = 3),
+    infoBoxOutput("stud.clicker_acc", width = 3),
+    infoBoxOutput("stud.sentiment", width = 3)
+  ),
+  
+  # Row 2: Performance and Attendance Trends
+  fluidRow(
+    box(
+      title = "My quiz scores vs class average",
+      footer = "Comparison of personal trend (green) vs class mean (dashed)",
+      plotOutput("stud.plot_quiz_comp", height = 250),
+      width = 6
+    ),
+    box(
+      title = "My attendance per session",
+      footer = "Green = attended · Red = absent",
+      plotOutput("stud.plot_attendance_bar", height = 250),
+      width = 6
+    )
+  ),
+  
+  # Row 3: Sentiment and Prior Skills Profile
+  fluidRow(
+    box(
+      title = "My sentiment vs class average",
+      footer = "Personal engagement levels across quizzes",
+      plotOutput("stud.plot_sentiment_comp", height = 250),
+      width = 6
+    ),
+    box(
+      title = "My prior skill profile",
+      footer = "Week-1 self-reported scores (0–5)",
+      plotOutput("stud.plot_skills_radar", height = 250),
+      width = 6
+    )
+  )
 )
 
 #######################################
@@ -174,6 +238,10 @@ Use the space below to be ready for your information visualizations in the dashb
 ####### BEGIN INPUT             #######
 #######################################
 
+dashboard_data <- quiz %>%
+  inner_join(experience, by = c("STUDENT_KEY" = "STUDENT_KEY")) %>%
+  filter(!is.na(PROG)) %>%
+  mutate(PROG = as.factor(PROG))
 
 
 #######################################
@@ -228,6 +296,36 @@ server = function(input, output) {
           geom_density(fill="gray") + # makes the density line and gray fill
           labs(x = "Completed Clicker Questions", y = "Density") + # change axis labels
           theme_classic() # to use white background
+    })
+    
+    # Average Quiz Score by Program (GRAD vs UGRAD)
+    output$inst.plot_dist <- renderPlot({
+        
+        # 1. Calculate the averages per group per quiz
+        plot_data <- dashboard_data %>%
+          group_by(QUIZ_NUMBER, PROG) %>%
+          summarize(avg_score = mean(QUIZ_SCORE, na.rm = TRUE), .groups = 'drop') %>%
+          filter(!is.na(QUIZ_NUMBER)) # Ensure quiz numbers are valid
+
+        # 2. Create the visualization
+        ggplot(plot_data, aes(x = factor(QUIZ_NUMBER), y = avg_score, fill = PROG)) +
+          # Using geom_col with position_dodge for side-by-side average bars
+          geom_col(position = "dodge", alpha = 0.9) + 
+          # Use your identified theme colors
+          scale_fill_manual(values = c("GRAD" = "#e91e63", "UGRAD" = "#ffc107")) +
+          # Labels and formatting
+          labs(
+            x = "Quiz Number", 
+            y = "Average Quiz Score", 
+            fill = "Program",
+            title = "Average Performance: GRAD vs UGRAD"
+          ) +
+          scale_x_discrete(labels = paste("Quiz", 1:10)) + # Renames 1 to "Quiz 1", etc.
+          theme_minimal() +
+          theme(
+            legend.position = "top",
+            panel.grid.major.x = element_blank()
+          )
     })
     
 #######################################
