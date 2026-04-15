@@ -1,6 +1,6 @@
 ---
 title: "Dashboards for Clicker Data"
-author: '[[ADD YOUR NAME, CORNELL ID]]'
+author: 'Sydney Chin (scc273), Younghyun Jung (yj582), Arianna Hsu (ach282), Ivy Liu (il328), Amy Oduor (aao73), Sheki Okwayo(lso24)'
 subtitle: INFO 4100 Learning Analytics
 output:
   word_document: default
@@ -128,33 +128,67 @@ Your team can split up the tasks. Some work on creating the UI (this part), whil
 #######################################
 ####### BEGIN INPUT: Question 3 #######
 #######################################
-# Example of a tab (i.e. page)
+
+# =====================
+# INSTRUCTOR DASHBOARD
+# =====================
 instructor_dash = tabItem(
-    tabName = "instructor",
-    h2("Instructor Dashboard"),
+  tabName = "instructor",
+  h2("Instructor Dashboard"),
+  
+  fluidRow(
+    infoBoxOutput("inst.total_students"),
+    infoBoxOutput("inst.avg_attendance"),
+    infoBoxOutput("inst.avg_score"),
+    infoBoxOutput("inst.avg_sentiment")
+  ),
+  
+  fluidRow(
+    box(title = "Quiz Score Trend", width = 6,
+        plotOutput("inst.quiz_trend", height = 250)),
     
-    # Dynamic infoBoxes
-    fluidRow(
-      infoBoxOutput("inst.info1"),
-      infoBoxOutput("inst.info2")
-    ),
-    # Any visualization
-    fluidRow(
-        box(
-            title = "Box 1",
-            plotOutput("inst.plot1", height = 250)
-        ),
-        box(
-            title = "Box 2",
-            plotOutput("inst.plot2", height = 250)
-        )
-    )
+    box(title = "Attendance Rate by Quiz", width = 6,
+        plotOutput("inst.attendance_rate", height = 250))
+  ),
+  
+  fluidRow(
+    box(title = "Score Distribution by Program", width = 6,
+        plotOutput("inst.score_dist", height = 250)),
+    
+    box(title = "Prior Skill vs Quiz Performance", width = 6,
+        plotOutput("inst.skill_vs_score", height = 250))
+  )
 )
 
-# Another empty tab
+# =====================
+# STUDENT DASHBOARD
+# =====================
 student_dash = tabItem(
   tabName = "student",
-  h2("Student Dashboard")
+  h2("Student Dashboard"),
+  
+  fluidRow(
+    infoBoxOutput("stu.attendance"),
+    infoBoxOutput("stu.avg_score"),
+    infoBoxOutput("stu.clicker_acc"),
+    infoBoxOutput("stu.sentiment")
+  ),
+  
+  fluidRow(
+    box(title = "My Quiz Scores vs Class Average", width = 6,
+        plotOutput("stu.quiz_compare", height = 250)),
+    
+    box(title = "My Attendance per Session", width = 6,
+        plotOutput("stu.attendance_plot", height = 250))
+  ),
+  
+  fluidRow(
+    box(title = "My Sentiment vs Class Average", width = 6,
+        plotOutput("stu.sentiment_plot", height = 250)),
+    
+    box(title = "My Prior Skill Profile", width = 6,
+        plotOutput("stu.skills", height = 250))
+  )
 )
 
 #######################################
