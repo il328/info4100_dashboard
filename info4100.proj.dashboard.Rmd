@@ -71,6 +71,12 @@ library(shiny)
 # install.packages("shinydashboard")
 library(shinydashboard)
 
+#install.packages("plotly")
+library(plotly)
+
+#install.packages("fmsb")
+library(fmsb)
+
 # This should load the datasets:
 # experience (123 by 11) and quiz (2423 by 13)
 load("info4100.proj.dashboard.rda")
@@ -157,9 +163,10 @@ instructor_dash <- tabItem(
             plotOutput("inst.score_dist", height = 250)
         ),
         box(
-            title = "Prior Skill vs Quiz Performance", width = 6,
-            plotOutput("inst.skill_vs_score", height = 250)
-        )
+        title = "Student Intervention Map", width = 6,
+        plotlyOutput("inst.plot4", height = 300)
+      )
+
     )
 )
 
@@ -189,13 +196,16 @@ student_dash <- tabItem(
         box(
             title = "My Sentiment vs Class Average", width = 6,
             plotOutput("stu.sentiment_plot", height = 250)
-        ),
-        box(
-            title = "My Prior Skill Profile", width = 6,
-            plotOutput("stu.skills", height = 250)
         )
+    ),
+      fluidRow(
+        box(
+          title = "My Skill Profile vs Class Average",
+          width = 8,
+          plotOutput("stu.plot4", height = 500)
+        )
+      )
     )
-)
 
 #######################################
 #######################################
@@ -214,6 +224,46 @@ Use the space below to be ready for your information visualizations in the dashb
 ####### BEGIN INPUT             #######
 #######################################
 
+#Instructor #4
+# At-risk classification
+student_risk <- quiz %>%
+  group_by(STUDENT_KEY) %>%
+  summarise(
+    avg_quiz_score = mean(QUIZ_SCORE, na.rm = TRUE),
+    attend_rate    = mean(ATTENDED, na.rm = TRUE)
+  ) %>%
+  mutate(risk_group = case_when(
+    attend_rate < 0.70                                ~ "Low Attendance",
+    attend_rate >= 0.70 & avg_quiz_score < 12         ~ "High Attendance, Low Score",
+    TRUE                                              ~ "On Track"
+  ))
+#Student #4
+ref_student_key <- 1
+
+skill_cols <- c("DATABASE_SCORE", "SQL_SCORE", "PROGRAMING_SCORE",
+                "STORED_PROC_SCORE", "ETL_SCORE", "DATA_VIS_SCORE",
+                "REQUIREMENT_GATHER_SCORE")
+
+# Class average per skill
+class_avg <- experience %>%
+  summarise(across(all_of(skill_cols), mean, na.rm = TRUE))
+
+# Selected student's skills
+student_skills <- experience %>%
+  filter(STUDENT_KEY == ref_student_key) %>%
+  select(all_of(skill_cols))
+
+# fmsb requires: row1 = max, row2 = min, then data rows
+radar_data <- rbind(
+  setNames(as.data.frame(matrix(5, nrow = 1, ncol = 7)), skill_cols),  # max
+  setNames(as.data.frame(matrix(0, nrow = 1, ncol = 7)), skill_cols),  # min
+  class_avg,
+  student_skills
+)
+
+# Clean column names for display
+colnames(radar_data) <- c("Database", "SQL", "Programming",
+                           "Stored Proc", "ETL", "Data Vis", "Req. Gathering")
 
 #######################################
 #######################################
@@ -269,6 +319,59 @@ server <- function(input, output) {
             labs(x = "Completed Clicker Questions", y = "Density") + # change axis labels
             theme_classic() # to use white background
     })
+#Ins #4
+    output$inst.plot4 = renderPlotly({
+      p <- ggplot(student_risk, aes(
+          x      = attend_rate * 100,
+          y      = avg_quiz_score,
+          color  = risk_group,
+          text   = paste("Student ID:", STUDENT_KEY,
+                         "<br>Attendance:", paste0(round(attend_rate * 100), "%"),
+                         "<br>Avg Quiz Score:", round(avg_quiz_score, 1),
+                         "<br>Status:", risk_group)
+        )) +
+        geom_point(size = 2, alpha = 0.8) +
+        scale_color_manual(values = c(
+          "Low Attendance"             = "#E15759",
+          "High Attendance, Low Score" = "#F28E2B",
+          "On Track"                   = "gray70"
+        )) +
+        geom_vline(xintercept = 70, linetype = "dashed", color = "gray40") +
+        geom_hline(yintercept = 12, linetype = "dashed", color = "gray40") +
+        labs(
+          x     = "Attendance Rate (%)",
+          y     = "Avg Quiz Score (out of 20)",
+          color = "Status"
+        ) +
+      theme_classic() +
+      theme(
+        legend.position  = "right",
+        legend.title     = element_text(size = 6),
+        legend.text      = element_text(size = 5),
+        legend.key.size  = unit(0.2, "cm")
+      )
+        ggplotly(p, tooltip = "text")
+    })
+#Stu 4
+      output$stu.plot4 = renderPlot({
+        radarchart(
+          radar_data,
+          axistype  = 1,
+          pcol      = c("gray50", "#4E79A7"),     # class avg, student
+          pfcol     = c(rgb(0.5,0.5,0.5,0.3), rgb(0.3,0.5,0.7,0.3)),
+          plwd      = 2,
+          cglcol    = "grey",
+          cglty     = 1,
+          axislabcol = "grey40",
+          vlcex     = 0.9,
+        )
+        legend(
+          x = "bottomright",
+          legend = c("Class Average", "You"),
+          col    = c("gray50", "#4E79A7"),
+          lty    = 1, lwd = 2, bty = "n"
+        )
+      })
 
     #######################################
     #######################################
