@@ -216,9 +216,14 @@ student_dash <- tabItem(
   ),
   fluidRow(
     box(
+      title = "My sentiment vs class average",
+      width = 6,
+      plotOutput("stu.sentiment_plot", height = 250)
+    ),
+    box(
       title = "My Skill Profile vs Class Average",
-      width = 12,
-      plotOutput("stu.plot4", height = 500)
+      width = 6,
+      plotOutput("stu.plot4", height = 250)
     )
   )
 )
@@ -503,6 +508,43 @@ server <- function(input, output, session) {
       theme(
         axis.text.x = element_text(color = "#444444", size = 9, angle = 45, hjust = 1, vjust = 1, margin = margin(t = 10)),
         plot.margin = margin(t = 10, r = 10, b = 40, l = 10)
+      )
+  })
+  
+  output$stu.sentiment_plot <- renderPlot({
+    student_sent <- student_data() %>%
+      group_by(QUIZ_NUMBER) %>%
+      summarise(student_avg = mean(AVG_T_CLICKER, na.rm = TRUE), .groups = "drop")
+
+    class_sent <- quiz_clean %>%
+      group_by(QUIZ_NUMBER) %>%
+      summarise(class_avg = mean(AVG_T_CLICKER, na.rm = TRUE), .groups = "drop")
+
+    compare_df <- left_join(class_sent, student_sent, by = "QUIZ_NUMBER") %>%
+      pivot_longer(cols = c(student_avg, class_avg), names_to = "group", values_to = "score") %>%
+      filter(!is.na(QUIZ_NUMBER))
+
+    ggplot(compare_df, aes(x = factor(QUIZ_NUMBER), y = score, color = group, group = group, linetype = group)) +
+      geom_line(linewidth = 1) +
+      geom_point(size = 2, aes(shape = group)) +
+      scale_color_manual(
+        values = c(class_avg = "gray60", student_avg = "#e7298a"), 
+        labels = c("Class Avg", "Me")
+      ) +
+      scale_linetype_manual(
+        values = c(class_avg = "dashed", student_avg = "solid"),
+        labels = c("Class Avg", "Me")
+      ) +
+      scale_shape_manual(
+        values = c(class_avg = 15, student_avg = 16),
+        labels = c("Class Avg", "Me")
+      ) +
+      scale_y_continuous(limits = c(0, 5)) +
+      labs(x = "Quiz Number", y = "Sentiment Score (0-5)", color = NULL, linetype = NULL, shape = NULL) +
+      theme_classic() +
+      theme(
+        legend.position = "top",
+        legend.margin = margin(b = -10)
       )
   })
 
