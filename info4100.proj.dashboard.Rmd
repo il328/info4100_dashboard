@@ -218,13 +218,31 @@ quiz_trend_data <- quiz %>%
     q25 = quantile(QUIZ_SCORE, 0.25, na.rm = TRUE),
     q75 = quantile(QUIZ_SCORE, 0.75, na.rm = TRUE)
   ) %>%
-  filter(!is.na(QUIZ_NUMBER)) %>% 
+  filter(!is.na(QUIZ_NUMBER)) %>%
   mutate(
-    quiz_label = factor(paste0("Q", QUIZ_NUMBER), 
+    quiz_label = factor(paste0("Q", QUIZ_NUMBER),
                         levels = paste0("Q", sort(unique(QUIZ_NUMBER))))
   )
 #######################################
 #######################################
+
+# Replace this to input$student_id to update it dynamically.
+target_student_id <- 101
+
+all_sessions <- sort(unique(quiz$SESSION_NUMBER))
+
+attendance_data <- quiz %>%
+  filter(STUDENT_KEY == target_student_id) %>%
+  arrange(SESSION_NUMBER) %>%
+  mutate(
+    session = factor(paste0("S", SESSION_NUMBER), levels = paste0("S", all_sessions)),
+    status = ifelse(ATTENDED == 1, "attended", "absent"),
+    height = ifelse(status == "attended", 1.0, 0.5)
+  ) %>%
+  select(session, status, height)
+
+attendance_data <- attendance_data %>%
+  complete(session, fill = list(status = "absent", height = 0.5))
 
 #######################################
 #######################################
@@ -242,6 +260,8 @@ server = function(input, output) {
 #######################################
 ####### BEGIN INPUT: Question 4 #######
 #######################################
+    
+    # 1. InfoBox
     output$inst.info1 = renderInfoBox({
         infoBox("Students total", 
                 length(unique(quiz$STUDENT_KEY)), 
@@ -250,38 +270,14 @@ server = function(input, output) {
     
     output$inst.info2 = renderInfoBox({
         infoBox("Attendance",
-                paste0(round(100 * mean(quiz$ATTENDED)), "%"), 
+                paste0(round(100 * mean(quiz$ATTENDED, na.rm = TRUE)), "%"), 
                 icon = icon("list"), color = "yellow")
     })
     
-    output$inst.plot1 = renderPlot({
-        hist(quiz$QUIZ_SCORE)
-    })
-    
-    output$inst.plot2 = renderPlot({
-        # I'm giving you three examples here
-        # only the last one will be displayed
-        # but you can try out each one.
-        # As you can see, using ggplot allows you to 
-        # make much better-looking visualizations.
-      
-        # simple
-        hist(quiz$TOTAL_COMPLETED_CLICKER) 
-      
-        # using ggplot
-        ggplot(quiz, aes(TOTAL_COMPLETED_CLICKER)) + 
-          geom_histogram()
-        
-        # using ggplot to make it clearer
-        ggplot(quiz, aes(x = TOTAL_COMPLETED_CLICKER)) + 
-          geom_density(fill="gray") + # makes the density line and gray fill
-          labs(x = "Completed Clicker Questions", y = "Density") + # change axis labels
-          theme_classic() # to use white background
-    })
+    # 2. Quiz Score Trend
     output$inst.quiz_trend <- renderPlot({
       ggplot(quiz_trend_data, aes(x = quiz_label, y = avg_score, group = 1)) +
         geom_ribbon(aes(ymin = q25, ymax = q75), fill = "#bbdefb", alpha = 0.5) +
-        
         geom_line(color = "#1976d2", linewidth = 1.2) +
         geom_point(color = "#0d47a1", size = 3) +
         scale_y_continuous(limits = c(5, 20), breaks = c(10, 15, 20)) +
@@ -293,11 +289,37 @@ server = function(input, output) {
           axis.text.y = element_text(color = "#444444", size = 11, margin = margin(r = 10)),
           plot.margin = margin(t = 10, r = 10, b = 40, l = 10)
         )
-})
+    })
+    
+    output$stu.attendance_plot <- renderPlot({
+        target_student_id <- 101
+        
+        attendance_data <- quiz %>%
+          filter(STUDENT_KEY == target_student_id) %>%
+          arrange(SESSION_NUMBER) %>%
+          mutate(
+            session = factor(paste0("S", SESSION_NUMBER), levels = paste0("S", all_sessions)),
+            status = ifelse(ATTENDED == 1, "attended", "absent"),
+            height = ifelse(status == "attended", 1.0, 0.5)
+          ) %>%
+          select(session, status, height) %>%
+          complete(session, fill = list(status = "absent", height = 0.5))
+
+        ggplot(attendance_data, aes(x = session, y = height, fill = status)) +
+          geom_col(width = 0.4, show.legend = FALSE, linewidth = 0) +
+          scale_fill_manual(values = c("attended" = "#56ae7c", "absent" = "#b55347")) +
+          scale_y_continuous(limits = c(0, 1.1), expand = c(0, 0)) +
+          theme_void() +
+          theme(
+            panel.background = element_rect(fill = "white", colour = NA),
+            plot.background = element_rect(fill = "white", colour = NA),
+            axis.text.x = element_text(color = "#444444", size = 9, angle = 45, hjust = 1, vjust = 1, margin = margin(t = 10)),
+            plot.margin = margin(t = 10, r = 10, b = 40, l = 10)
+          )
+    })
     
 #######################################
 #######################################
-    
 }
 ```
 
