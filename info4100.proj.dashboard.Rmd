@@ -70,14 +70,12 @@ library(shiny)
 
 # install.packages("shinydashboard")
 library(shinydashboard)
-library(plotly)
+
+# install.packages("fmsb)
 library(fmsb)
 
 # install.packages("plotly")
 library(plotly)
-
-# install.packages("fmsb")
-library(fmsb)
 
 # This should load the datasets:
 # experience (123 by 11) and quiz (2423 by 13)
@@ -93,11 +91,13 @@ Go through the planning / sketching process described in the reading about dashb
 *Planning for the student dashboard*
 
 -   For whom? Who will use it and what is their background?
-    -   [add your answer here]
-    -   [add your answer here]
+    -   Students have a mix of backgrounds including both undergrad and graduate
+    students. They will use this dashboard to know their standing compared to
+    other students in the class. 
 -   Why? What is the goal? What questions to answer?
-    -   [add your answer here]
-    -   [add your answer here]
+    -   The student's goal is to be able to assess their understanding of the 
+    content so they know when to ask for help. Additionally, it is helpful to 
+    know their attendance rate in order to maximize their participation grade. 
 -   What? What data to show and what is its structure?
     -   [add your answer here]
     -   [add your answer here]
@@ -108,17 +108,21 @@ Go through the planning / sketching process described in the reading about dashb
 *Planning for the teacher dashboard*
 
 -   For whom? Who will use it and what is their background?
-    -   [add your answer here]
-    -   [add your answer here]
+    -   The instructor is teaching a large class, so it is hard to be able to 
+    gauge how every student is doing. The teacher would like more support in 
+    pinpointing which students need additional interventions. 
 -   Why? What is the goal? What questions to answer?
-    -   [add your answer here]
-    -   [add your answer here]
+    -   The instructor would like to know which sessions students were able to 
+    understand well and which sessions were confusing. Also, it is important to 
+    know which students are struggling to understand the course content. 
 -   What? What data to show and what is its structure?
     -   [add your answer here]
     -   [add your answer here]
 -   How? How will visualizations support the goal?
-    -   [add your answer here]
-    -   [add your answer here]
+    -   The skills gap visualization will help the instructor know which students
+    have incorrectly assessed their skills (had high survey scores but low quiz
+    scores) and which students are struggling due to their lack of prior knowledge
+    (had low survey scores and currently have low quiz scores).
 
 **Question 2:** Based on your plan above, make a sketch of what the dashboard would look like. See this week's readings for examples. Be detailed about what kinds of data points and visualizations you want to see in different parts of the page. Consider the user experience and how you should position more general information compared to more specific information, and where you may need some additional explanation to help the viewer understand a graphic, for example. In your sketch, it is useful to give labels to different objects, because in the steps below you can split up work between team members and the labels will help you connect the UI with the data objects. Show your sketches in section to get feedback from the teaching team.
 
@@ -168,8 +172,8 @@ instructor_dash <- tabItem(
       plotOutput("inst.quiz_trend", height = 250)
     ),
     box(
-      title = "Score Distribution", width = 6,
-      plotOutput("inst.score_dist", height = 250)
+      title = "Skill to Performance Gap", width = 6,
+      plotOutput("inst.skill_gap_plot", height = 250)
     )
   ),
   
@@ -395,13 +399,6 @@ server <- function(input, output, session) {
       )
   })
 
-  output$inst.score_dist <- renderPlot({
-    ggplot(instructor_filtered(), aes(x = QUIZ_SCORE)) +
-      geom_histogram(binwidth = 1, fill = "#2c7fb8", color = "white") +
-      labs(x = "Quiz Score", y = "Count") +
-      theme_classic()
-  })
-
   output$inst.risk.map <- renderPlotly({
     req(input$inst.attend_cutoff, input$inst.quiz_cutoff)
     
@@ -542,6 +539,52 @@ server <- function(input, output, session) {
       col = c("gray50", "#4E79A7"), lty = 1, lwd = 2, bty = "n"
     )
   })
+  
+  output$inst.skill_gap_plot <- renderPlot({
+  # Define skill columns
+  skill_cols <- c("DATABASE_SCORE", "SQL_SCORE", "PROGRAMING_SCORE", 
+                  "STORED_PROC_SCORE", "ETL_SCORE", "DATA_VIS_SCORE", 
+                  "REQUIREMENT_GATHER_SCORE")
+  
+  # Calculate student baseline skills
+  student_skills <- experience_clean %>%
+    mutate(avg_survey_score = rowMeans(select(., all_of(skill_cols)), na.rm = TRUE)) %>%
+    select(STUDENT_KEY, avg_survey_score)
+
+  # Join with instructor rollup data
+  plot_data <- instructor_student_rollup() %>%
+    inner_join(student_skills, by = "STUDENT_KEY") %>%
+    mutate(
+      category = case_when(
+        avg_survey_score < 2.5 & avg_quiz_score < input$inst.quiz_cutoff ~ "Under-prepared",
+        avg_survey_score >= 2.5 & avg_quiz_score < input$inst.quiz_cutoff ~ "Overconfident",
+        avg_quiz_score >= input$inst.quiz_cutoff ~ "Performing Well",
+        TRUE ~ "Other At-Risk"
+      )
+    )
+
+  # Create the Scatterplot with fixed scales
+  ggplot(plot_data, aes(x = avg_survey_score, y = avg_quiz_score, color = category)) +
+    geom_point(size = 3, alpha = 0.7) +
+    geom_vline(xintercept = 2.5, linetype = "dotted", color = "gray50") +
+    geom_hline(yintercept = input$inst.quiz_cutoff, linetype = "dashed", color = "red") +
+    # SET SCALES HERE
+    scale_x_continuous(limits = c(0, 5), breaks = 0:5) +
+    scale_y_continuous(limits = c(0, 20), breaks = seq(0, 20, by = 5)) +
+    scale_color_manual(values = c(
+      "Under-prepared" = "#E15759", 
+      "Overconfident" = "#F28E2B",  
+      "Performing Well" = "#76B7B2", 
+      "Other At-Risk" = "#BAB0AC"   
+    )) +
+    labs(
+      x = "Average Initial Skill Score (0-5)",
+      y = "Average Quiz Score (0-20)",
+      color = "Student Profile"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+})
 
   #######################################
   #######################################
