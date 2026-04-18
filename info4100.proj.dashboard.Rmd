@@ -70,6 +70,8 @@ library(shiny)
 
 # install.packages("shinydashboard")
 library(shinydashboard)
+library(plotly)
+library(fmsb)
 
 # This should load the datasets:
 # experience (123 by 11) and quiz (2423 by 13)
@@ -136,10 +138,10 @@ instructor_dash <- tabItem(
   tabName = "instructor",
   h2("Instructor Dashboard"),
   fluidRow(
-    infoBoxOutput("inst.total_students"),
-    infoBoxOutput("inst.avg_attendance"),
-    infoBoxOutput("inst.avg_score"),
-    infoBoxOutput("inst.avg_sentiment")
+    infoBoxOutput("inst.total_students", width = 3),
+    infoBoxOutput("inst.avg_attendance", width = 3),
+    infoBoxOutput("inst.avg_score", width = 3),
+    infoBoxOutput("inst.avg_sentiment", width = 3)
   ),
   fluidRow(
     box(
@@ -158,7 +160,7 @@ instructor_dash <- tabItem(
     ),
     box(
       title = "Student Intervention Map", width = 6,
-      plotlyOutput("inst.plot4", height = 300)
+      plotlyOutput("inst.plot4", height = 250)
     )
   )
 )
@@ -188,7 +190,7 @@ student_dash <- tabItem(
   fluidRow(
     box(
       title = "My Skill Profile vs Class Average",
-      width = 8,
+      width = 12,
       plotOutput("stu.plot4", height = 500)
     )
   )
@@ -308,6 +310,56 @@ server <- function(input, output) {
   #######################################
   ####### BEGIN INPUT: Question 4 #######
   #######################################
+  
+  # Total student
+  output$inst.total_students <- renderInfoBox({
+    total_stu <- length(unique(quiz$STUDENT_KEY))
+    infoBox(
+      "Total students", 
+      total_stu, 
+      subtitle = "3 cohorts", 
+      icon = icon("users"), 
+      color = "blue"
+    )
+  })
+
+  # Average attendance
+  output$inst.avg_attendance <- renderInfoBox({
+    avg_att <- mean(quiz$ATTENDED, na.rm = TRUE)
+    att_pct <- round(avg_att * 100)
+    infoBox(
+      "Avg attendance", 
+      paste0(att_pct, "%"), 
+      subtitle = "Above threshold", 
+      icon = icon("calendar-check"), 
+      color = "green"
+    )
+  })
+
+  # Average quiz
+  output$inst.avg_score <- renderInfoBox({
+    avg_score <- mean(quiz$QUIZ_SCORE, na.rm = TRUE)
+    score_pct <- round((avg_score / 20) * 100, 1)
+    infoBox(
+      "Avg quiz score", 
+      paste0(round(avg_score, 1), " / 20"), 
+      subtitle = paste0(score_pct, "%"), 
+      icon = icon("pencil-alt"), 
+      color = "yellow"
+    )
+  })
+
+  # Average sentiment
+  output$inst.avg_sentiment <- renderInfoBox({
+    avg_sent <- mean(quiz$AVG_T_CLICKER, na.rm = TRUE)
+    infoBox(
+      "Avg sentiment", 
+      paste0(round(avg_sent, 1), " / 5"), 
+      subtitle = "Generally positive", 
+      icon = icon("smile"), 
+      color = "green"
+    )
+  })
 
   # 1. InfoBox
   output$inst.info1 <- renderInfoBox({
@@ -403,6 +455,7 @@ server <- function(input, output) {
       )
     ggplotly(p, tooltip = "text")
   })
+  
   # Stu 4
   output$stu.plot4 <- renderPlot({
     radarchart(
