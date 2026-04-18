@@ -1,9 +1,11 @@
 ---
 title: "Dashboards for Clicker Data"
-author: 'Sydney Chin (scc273), Younghyun Jung (yj582), Arianna Hsu (ach282), Ivy Liu (il328), Amy Oduor (aao73), Sheki Okwayo(lso24)'
+author: Sydney Chin (scc273), Younghyun Jung (yj582), Arianna Hsu (ach282), Ivy Liu
+  (il328), Amy Oduor (aao73), Sheki Okwayo(lso24)
 subtitle: INFO 4100 Learning Analytics
 output:
   word_document: default
+  pdf_document: default
 ---
 
 This project is about developing a learning analytics dashboard based on clicker data. You will work as a team to learn how to make a dashboard using R Shiny (official page with several tutorials: <https://shiny.rstudio.com/tutorial/>).
@@ -348,7 +350,6 @@ server <- function(input, output, session) {
     prog_text <- ifelse(nrow(student_meta) > 0 && !is.na(student_meta$PROG), student_meta$PROG, "Unknown")
     year_text <- ifelse(nrow(student_meta) > 0 && !is.na(student_meta$YEAR), student_meta$YEAR, "Unknown")
     
-    # 스크린샷과 유사한 스타일의 카드 UI 생성
     div(style = "padding: 0 15px;",
       div(style = "background-color: #2c3b41; padding: 15px; border-radius: 5px; margin-top: 10px;",
         p("Program", style = "margin: 0; color: #8aa4af; font-size: 12px;"),
@@ -661,7 +662,6 @@ dside <- dashboardSidebar(
     ),
     selectInput("stud.key", "Student ID", choices = c()),
     
-    # Program 및 Cohort year 정보 출력
     uiOutput("sidebar_stud_info")
   )
 )
@@ -697,41 +697,43 @@ shinyApp(ui, server)
 
 **Question 5:** Add screenshots of your group's dahsboards below using this syntax or simply add them to the Word document after knitting:
 
-![Dashboard Screenshot](example_dash.png)
+![Dashboard Screenshot](instructor_dashboard.png)
+![Dashboard Screenshot](student_dashboard.png)
 
 **Question 6:** Evaluate your group dashboard from the perspective of the instructor (teacher dashboard) and from the perspective of the student (student dashboard). What do you like about it, what would you change or add to it if you had more time?
 
 *Reflection for the student dashboard*
 
 -   What do you like about it?
-    -   [add your answer here]
+    -   I really like the highly personalized nature of the visualizations, especially how the radar chart and sentiment trend lines allow students to instantly see their individual standing compared to class-wide benchmarks.
 -   What would you change or add to it if you had more time?
-    -   [add your answer here]
+    -   If I had more time, I would implement an "Automated Resource Recommender" that suggests specific review materials based on the quiz topics where a student’s score falls significantly below the class average.
 -   What was the biggest challenge you faced? How did you address it?
-    -   [add your answer here]
+    -   The primary challenge was ensuring the sidebar student selector seamlessly updated all four disparate plots simultaneously; I addressed this by centralizing the data filtering into a single reactive function to maintain state consistency.
 
 *Reflection for the teacher dashboard*
 
 -   What do you like about it?
-    -   [add your answer here]
+    -   The "Skill to Performance Gap" scatter plot is excellent because it helps instructors identify "at-risk" students who may have overestimated their initial abilities or are struggling despite high prior experience.
 -   What would you change or add to it if you had more time?
-    -   [add your answer here]
+    -   I would add a direct "Action" button within the At-Risk Students list that allows the teaching team to send pre-formatted intervention emails to specific students directly from the dashboard interface.
 -   What was the biggest challenge you faced? How did you address it?
-    -   [add your answer here]
+    -   Balancing high-level class trends with granular student-level details was difficult, so we implemented a hierarchical layout using info boxes for quick KPIs and scrolling tables for deeper drill-down analysis.
 
 # Estimate time spent
 
 **We want to give students an estimate of how much time this homework will take. Please indicate how many hours you spent to complete this homework here.**
 
--   I spent [insert your time] hours.
+-  We spent 10 hours.
 
 # Generative AI usage
 
 **As stated in the course syllabus, using generative AI is allowed to help you as you complete this homework. We are interested in how it is being used and whether it is helpful for you.**
 
 -   How much did you use generative AI (e.g., not at all, some, most, or all the questions) and which one did you use?
+ => We used generative AI to most of the questions.
 -   If you used generative AI, how did you use it and was it helpful?
-
+ => We primarily leveraged AI to write complex code structures, debug reactive data flows, and refine the UI styling
 # Submit Project
 
 This is the end of the group project. Please **Knit to Word** (if you run into an issue, you can knit to PDF). The resulting file has to show both the R code and R output. Upload it on Canvas before the due date.
