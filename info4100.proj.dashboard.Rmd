@@ -73,6 +73,12 @@ library(shinydashboard)
 library(plotly)
 library(fmsb)
 
+# install.packages("plotly")
+library(plotly)
+
+# install.packages("fmsb")
+library(fmsb)
+
 # This should load the datasets:
 # experience (123 by 11) and quiz (2423 by 13)
 load("info4100.proj.dashboard.rda")
